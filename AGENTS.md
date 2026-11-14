@@ -33,4 +33,5 @@ Nada é declarado como funcionando no aparelho sem teste em aparelho real. O que
 
 ## Estado e pendências
 - Etapa 0: AGENTS.md criado. Estrutura, spike do linker/shim, gerenciador de arquivos, package manager e servidor Python pendentes.
-- Spike: ainda não validado no contexto de um app PocketIDE; não há dispositivo ADB conectado.
+- Ambiente: dispositivo ADB disponível (Galaxy M54 5G, Android 16/API 36, arm64); Gradle/Android SDK não encontrados no PATH. A execução normal do app ainda não foi validada.
+- Item 3: linker testado em Android 16/API 36/arm64 via `run-as`, com saída de sucesso. Gate inconclusivo e não aprovado: o teste não ocorreu no processo normal do app; o pacote foi removido antes de testar o shim. Itens 4–6 não iniciados. Detalhes em `docs/GATE_RESULT.md`.
