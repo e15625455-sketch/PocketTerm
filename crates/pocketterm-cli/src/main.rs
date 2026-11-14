@@ -1,4 +1,6 @@
-use std::process::{Command, ExitCode};
+use pocketterm_core::Terminal;
+use std::path::PathBuf;
+use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let mut args = std::env::args().skip(1);
@@ -14,16 +16,19 @@ fn main() -> ExitCode {
         eprintln!("pocketterm: expected a command after -c");
         return ExitCode::from(2);
     };
-    let shell = if cfg!(target_os = "android") {
-        "/system/bin/sh"
-    } else {
-        "sh"
-    };
-    match Command::new(shell).arg("-c").arg(command).status() {
-        Ok(status) => ExitCode::from(status.code().unwrap_or(1) as u8),
-        Err(err) => {
-            eprintln!("pocketterm: {err}");
-            ExitCode::from(1)
+    let root = std::env::var_os("POCKETTERM_FILES_DIR")
+        .map(PathBuf::from)
+        .or_else(|| std::env::current_dir().ok())
+        .unwrap_or_else(|| PathBuf::from("."));
+    let mut terminal = match Terminal::new(&root, None) {
+        Ok(terminal) => terminal,
+        Err(error) => {
+            eprintln!("pocketterm: {error}");
+            return ExitCode::from(1);
         }
-    }
+    };
+    let result = terminal.execute(&command);
+    print!("{}", result.stdout);
+    eprint!("{}", result.stderr);
+    ExitCode::from(result.exit_code.clamp(0, 255) as u8)
 }

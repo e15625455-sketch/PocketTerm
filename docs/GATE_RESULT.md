@@ -1,51 +1,36 @@
-# Resultado do gate de execução (Item 3)
+# Gate de execução pelo linker
 
-**Estado: inconclusivo; gate não aprovado.** O linker executou um ELF em `filesDir` no aparelho. A prova completa do shim no processo de uma instalação atual de PocketTerm não foi concluída. Itens 4–6 permanecem bloqueados por este gate.
+**Estado: não concluído.** Em 14/11/2026, no processo normal do PocketTerm instalado, um ELF PIE arm64 em `filesDir/usr/bin` executou pelo linker com sucesso. O harness do shim passou em Termux, mas ainda não há prova dos processos filhos pelo shim no processo Android.
 
-## Aparelho e contexto
+## Aparelho e build
 
-- Aparelho: Samsung Galaxy M54 5G (`SM-M546B`, `m54xxx`).
-- Android: 16, API 36.
-- ABI: `arm64-v8a`.
-- App presente durante a primeira prova: `com.pocketide.pocketterm`, `targetSdk=36`, versão `0.2.0`, debuggable.
-- Contexto da execução: `adb shell run-as`, que reportou `context=u:r:runas_app:s0:c208,c256,c512,c768`. Isso não é o processo normal `untrusted_app` do app e, portanto, não valida as restrições de execução vistas pelo processo real.
+- Samsung Galaxy M54 5G (`SM-M546B`).
+- Android 16, API 36; ABI `arm64-v8a`.
+- Pacote atual: `com.pocketterm.android`, versão 0.1.0, `targetSdk=37`, debuggable.
+- APK compilado localmente no Termux com `./gradlew assembleDebug` e instalado no aparelho para o teste.
 
-## Resultados reproduzidos
+## Teste direto no processo do app
 
-Um ELF PIE arm64 foi compilado com clang e copiado para o diretório privado do app (`files/gate/pt-gate`). A chamada:
+Um ELF PIE ARM64 foi compilado com clang Android, copiado para `/data/user/0/com.pocketterm.android/files/usr/bin/gate-child` e executado digitando o caminho absoluto no terminal nativo do app. O comando do núcleo Rust chamou `/system/bin/linker64 <binário>`.
 
-```text
-adb shell run-as com.pocketide.pocketterm /system/bin/linker64 /data/user/0/com.pocketide.pocketterm/files/gate/pt-gate
-```
-
-produziu:
+Saída visível no terminal:
 
 ```text
-pt-gate: linker execution OK
-exit code: 0
+gate: child ELF OK
 ```
 
-Um ELF pai chamou um ELF filho via `system()`, ambos no mesmo diretório privado, invocando o pai pelo linker. Resultado:
+Código de saída: 0. A tentativa anterior usando `./usr/bin/gate-child` não encontrou o arquivo porque o diretório atual era `filesDir/hi`; a repetição com caminho absoluto dentro de `filesDir` passou. Portanto, execução direta de ELF ARM64 pelo linker está provada neste aparelho e processo do app.
 
-```text
-pt-gate: child OK
-exit code: 0
-```
+## Shim e filhos
 
-Execução direta do ELF filho e de um script `#!/system/bin/sh` em `files/gate` também funcionou sob `run-as`. Isso não reproduz o contexto do processo real do app e não prova que o shim é necessário ou suficiente.
+O shim atualizado foi exercitado no Termux através de `native/tests/run_exec_shim_termux.sh`: `system()`, `execve`, `execv`, `execvp`, `posix_spawn` e shebang passaram no harness. Ele também verificou herança de ambiente, stdout/stderr e código de saída. Este resultado não é transferível ao processo Android: linker, SELinux e política do app podem mudar o comportamento. O usuário exigiu aviso e confirmação antes de qualquer interação ADB, então a validação em aparelho permanece pendente.
 
-## Shim
+`Permission denied` não apareceu no teste direto. Logcat/AVC não foi coletado nesta rodada, então não concluir ausência de AVC.
 
-`native/libpt-exec.c` foi compilado localmente como `libpt-exec.so` com clang, sem erros. Não foi possível testar seu carregamento/intersceptação no aparelho: o pacote antigo foi removido antes dessa prova. Após a remoção, a tentativa de acesso retornou exatamente:
+## Decisão
 
-```text
-run-as: unknown package: com.pocketide.pocketterm
-```
+Não marcar o gate como concluído sem testar no processo real do app: filho via `system()`, chamadas exec/spawn, shebang, ambiente, captura e interrupção. Não reduzir `targetSdk`, não usar root. O aparelho é compartilhado e nenhuma interação ADB desta etapa foi feita; aguardar confirmação antes do teste.
 
-O shim ainda é um spike incompleto: `execve`, `execv`, `execvp` e `posix_spawn` precisam de prova individual no processo real; resolução de interpretadores/shebangs e chamadas `system()`/subprocess precisam de prova no mesmo contexto.
+## Resultado do teste local em Termux
 
-## Decisão e próximo passo
-
-Não há erro `Permission denied` nem AVC/SELinux observado nesta prova; a execução pelo linker retornou sucesso sob `run-as`. O resultado não permite concluir o comportamento do app com `targetSdk=36` em seu processo normal. Retomar o gate depois de instalar uma build debuggable de PocketTerm, copiar um ELF e um script para o `filesDir` real da instalação, executar as provas pelo terminal da Activity e coletar `logcat`/AVC. Não reduzir `targetSdk` nem usar root.
-
-Se o gate falhar em Android recente, alternativas a avaliar são proot com rootfs ou VM pelo Android Virtualization Framework (AVF), sem contornar o modelo de segurança do Android.
+Em 14/11/2026, os dois endpoints Termux configurados foram acessíveis por HTTPS, mas não ofereceram a assinatura Ed25519 esperada (`HTTP 404`). O teste recusou ambos como inválidos e `pkg update` falhou sem aceitar índice. Isso demonstra a validação fail-closed, não um repositório funcional. Python e `python3 -m http.server` seguem não testados; dependem de repositório próprio com pacotes reconstruídos para o applicationId do PocketTerm e chave pública confiável.
