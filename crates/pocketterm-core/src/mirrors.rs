@@ -14,6 +14,11 @@ const RELEASE_LIMIT: usize = 1024 * 1024;
 const INDEX_LIMIT: usize = 64 * 1024 * 1024;
 const MIRROR_CONFIG: &str = "usr/etc/pocketterm/mirrors.conf";
 const SELECTED_CONFIG: &str = "usr/etc/pocketterm/selected-mirror";
+pub const POCKETTERM_REPOSITORY: &str = "https://e15625455-sketch.github.io/PocketTerm-pkg";
+pub const POCKETTERM_PUBLIC_KEY: [u8; 32] = [
+    0xcc, 0x08, 0x6f, 0x7a, 0x85, 0x74, 0xb4, 0xbc, 0x23, 0x0a, 0x41, 0xb2, 0xc1, 0x48, 0xfe, 0x1a,
+    0x23, 0x9d, 0x3c, 0x07, 0xea, 0x9a, 0x68, 0x42, 0xf6, 0x79, 0x86, 0x2f, 0xe5, 0x0a, 0x30, 0x68,
+];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Mirror {
@@ -45,10 +50,14 @@ impl MirrorManager {
                 .parent()
                 .ok_or_else(|| "invalid mirror configuration path".to_owned())?;
             fs::create_dir_all(parent).map_err(display_error)?;
-            let defaults = "# Diagnostic-only mirrors; official Termux packages target a different application ID.\ntermux-primary\thttps://packages.termux.dev/apt/termux-main\t-\ntermux-cf\thttps://packages-cf.termux.dev/apt/termux-main\t-\n";
+            let defaults = format!(
+                "# Signed PocketTerm repository; Termux endpoints are diagnostic-only.\npocketterm\t{}\t{}\ntermux-primary\thttps://packages.termux.dev/apt/termux-main\t-\ntermux-cf\thttps://packages-cf.termux.dev/apt/termux-main\t-\n",
+                POCKETTERM_REPOSITORY,
+                hex(&POCKETTERM_PUBLIC_KEY)
+            );
             fs::write(&config, defaults).map_err(display_error)?;
         }
-        let text = fs::read_to_string(config).map_err(display_error)?;
+        let text = fs::read_to_string(&config).map_err(display_error)?;
         let mut mirrors = Vec::new();
         for (line_number, raw) in text.lines().enumerate() {
             let line = raw.trim();
@@ -77,6 +86,26 @@ impl MirrorManager {
                 public_key,
             });
         }
+        if !mirrors.iter().any(|mirror| mirror.name == "pocketterm") {
+            mirrors.insert(
+                0,
+                Mirror {
+                    name: "pocketterm".into(),
+                    base_url: POCKETTERM_REPOSITORY.into(),
+                    public_key: Some(POCKETTERM_PUBLIC_KEY),
+                },
+            );
+            let mut content = String::from(
+                "# Signed PocketTerm repository; Termux endpoints are diagnostic-only.\n",
+            );
+            for mirror in &mirrors {
+                let key = mirror
+                    .public_key
+                    .map_or_else(String::new, |value| hex(&value));
+                content.push_str(&format!("{}\t{}\t{}\n", mirror.name, mirror.base_url, key));
+            }
+            atomic_write(&config, content.as_bytes())?;
+        }
         Ok(Self { files_dir, mirrors })
     }
 
@@ -89,7 +118,9 @@ impl MirrorManager {
             "test" => self.test_command(&args[1..]),
             "select" => self.select_command(&args[1..]),
             "update" => self.update_command(),
-            "install" => Err("package installation requires a verified custom repository".into()),
+            "install" | "remove" | "list" | "verify" => {
+                crate::packages::execute(&self.files_dir, args)
+            }
             _ => Err("usage: pkg mirrors|test|select|update".into()),
         }
     }
@@ -212,6 +243,10 @@ impl MirrorManager {
                         .join("Packages");
                     atomic_write(&destination, &index.packages)?;
                     atomic_write(&destination.with_file_name("Release"), &index.release)?;
+                    atomic_write(
+                        &self.files_dir.join(SELECTED_CONFIG),
+                        mirror.name.as_bytes(),
+                    )?;
                     let hash = hex(&Sha256::digest(&index.packages));
                     let elapsed = started.elapsed().as_millis();
                     return Ok(format!(
@@ -515,6 +550,28 @@ fn display_error(error: impl std::fmt::Display) -> String {
     error.to_string()
 }
 
+pub(crate) fn download_package(
+    files_dir: &Path,
+    filename: &str,
+    expected_sha256: &str,
+) -> Result<Vec<u8>, String> {
+    if !safe_relative_path(filename) || filename.contains('\\') {
+        return Err("unsafe package filename in index".into());
+    }
+    let manager = MirrorManager::open(files_dir)?;
+    let selected = fs::read_to_string(files_dir.join(SELECTED_CONFIG)).map_err(display_error)?;
+    let mirror = manager.find_mirror(selected.trim())?;
+    let index = fetch_validated_index(mirror)?;
+    crate::packages::verify_index_package_hash(&index.packages, filename, expected_sha256)?;
+    let client = http_client()?;
+    let url = endpoint(mirror, filename)?;
+    let package = fetch(&client, &url, 512 * 1024 * 1024)?;
+    if !verify_sha256(&package, expected_sha256) {
+        return Err("package SHA-256 does not match signed index".into());
+    }
+    Ok(package)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -562,7 +619,12 @@ mod tests {
         let root = std::env::temp_dir().join(format!("pocketterm-mirrors-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         let manager = MirrorManager::open(&root).expect("mirror defaults");
-        assert_eq!(manager.mirrors.len(), 2);
+        assert_eq!(manager.mirrors.len(), 3);
+        assert_eq!(manager.mirrors[0].name, "pocketterm");
+        assert_eq!(
+            manager.mirrors[0].public_key,
+            Some(super::POCKETTERM_PUBLIC_KEY)
+        );
         assert!(super::validate_https_url("http://example.org").is_err());
         let _ = fs::remove_dir_all(root);
     }

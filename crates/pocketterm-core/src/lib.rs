@@ -1,6 +1,7 @@
 //! Command execution and private workspace file operations for PocketTerm.
 
 mod mirrors;
+mod packages;
 
 use std::fs;
 use std::io::{self, Read};

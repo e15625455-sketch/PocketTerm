@@ -37,3 +37,14 @@
 ## Resultado histórico separado
 
 Uma versão anterior executou ELF e script via `adb shell run-as` no mesmo aparelho, fora do processo normal do app; isso não é a prova atual do shim. Detalhes e gate parcial em [GATE_RESULT.md](GATE_RESULT.md).
+
+## Etapa loja PocketTerm (14/11/2026; desenvolvimento local)
+
+- Implementação da factory e do cliente: arquivos locais em `factory/`, `.github/workflows/package-factory.yml` e `crates/pocketterm-core/src/packages.rs`.
+- Os scripts shell foram verificados sintaticamente e o script de configuração foi exercitado com checkout mock do `termux-packages`; isso não compila os pacotes e não prova o workflow.
+- `cargo fmt --all`: passou; `cargo clippy --workspace --all-targets -- -D warnings`: passou; `cargo test --workspace`: passou, 19 testes unitários no crate core e os demais crates sem falhas.
+- `bash -n factory/*.sh`, teste mock de `configure-termux.sh` e `git diff --check`: passaram. Nenhum `actionlint`/validador YAML está instalado no ambiente.
+- Smoke `cargo run -p pocketterm-cli -- -c 'pkg list'` e `pkg verify` passou em diretório temporário; `pkg install python` recusou como esperado sem índice atualizado (`no package index; run pkg update first`).
+- Não houve execução do workflow Actions, publicação de Pages, download de pacote ou assinatura da Release com a chave privada (indisponível por projeto).
+- Aparelho: nenhum ADB utilizado nesta etapa. `pkg update`, `pkg install python`, `python3 --version` e `python3 -m http.server` continuam não testados no aparelho.
+- Dependências externas para primeira publicação: configurar `PT_SIGNING_KEY` e `PT_PUBLISH_TOKEN` como secrets Actions do repositório PocketTerm; habilitar Pages no repositório `PocketTerm-pkg` usando branch `gh-pages` e raiz. Depois executar `PocketTerm package factory` manualmente e revisar o artefato antes de validar no app.
