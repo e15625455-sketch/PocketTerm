@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PocketTerm</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header><strong>PocketTerm</strong><button id="serve">Start server</button><button id="stop">Stop</button></header>
+  <main>
+    <nav aria-label="Files"><h2>Files</h2><ul id="files"><li>workspace/</li><li>index.html</li></ul></nav>
+    <section><h2>Editor</h2><textarea aria-label="Editor" spellcheck="false"><!doctype html>
+<html><body><h1>Hello from PocketTerm</h1></body></html></textarea></section>
+    <section><h2>Output</h2><pre id="output">pocket@android:~$ </pre></section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

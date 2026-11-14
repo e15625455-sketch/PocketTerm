@@ -1,0 +1,11 @@
+[package]
+name = "pocketterm-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+pocketterm-core = { path = "../pocketterm-core" }
+
+[lints]
+workspace = true

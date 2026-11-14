@@ -5,7 +5,8 @@
 - Data: 2026-11-13.
 - Android: 16 (API 36).
 - ABI: `arm64-v8a`.
-- `targetSdk` da instalação presente durante o teste: 36.
+- `targetSdk` da instalação antiga presente durante o teste: 36.
+- `targetSdk` configurado no projeto atual: 37 (Android 17 estável).
 - Linker `/system/bin/linker64` executando ELF em diretório privado via `adb shell run-as`: saída `pt-gate: linker execution OK`, código 0.
 - `system()` pai/filho via linker: saída `pt-gate: child OK`, código 0.
 - ELF executado diretamente e script shebang executado por `run-as`: sucesso, porém fora do processo normal do app.

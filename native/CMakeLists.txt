@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.22.1)
+project(pt_exec C)
+add_library(pt-exec SHARED libpt-exec.c)
+target_compile_options(pt-exec PRIVATE -Wall -Wextra -Werror)
+target_link_options(pt-exec PRIVATE "-Wl,-z,max-page-size=16384")
