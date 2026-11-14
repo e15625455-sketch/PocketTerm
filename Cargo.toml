@@ -2,7 +2,7 @@
 resolver = "3"
 members = [
   "crates/pocketterm-core",
-  "crates/pocketterm-server",
+  "crates/pocketterm-jni",
   "crates/pocketterm-cli",
 ]
 

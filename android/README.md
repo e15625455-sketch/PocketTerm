@@ -1,5 +1,11 @@
-# Android shell
+# PocketTerm Android terminal
 
-The project targets Android 17 (API 37), uses AGP 9.5.0 and expects Gradle 9.7.0, an Android SDK platform/build tools 37, CMake 3.22.1, and the Android NDK. Build with `./android/build.sh` after installing those tools. Native C code is packaged from the CMake target with 16 KB maximum page alignment and legacy JNI library packaging.
+O aplicativo é um terminal Android nativo, sem WebView nem frontend web. O núcleo Rust é acessado por JNI. O APK de debug é compilado localmente no Termux arm64:
 
-Status on 2026-11-13: an Android 16/API 36 arm64 device is connected, but this environment has no Java, Gradle, Android SDK or NDK. The Android project and build script are unbuilt and untested here. Follow `../docs/DEVICE_VALIDATION.md` after installing a debug APK.
+```sh
+./gradlew assembleDebug
+```
+
+O wrapper configura JDK 17, Gradle 9.9.1, SDK/API 37 e AAPT2 local em `.tools/`. O build compila `pocketterm-jni` e `libpt-exec.so` para `arm64-v8a` com alinhamento de página de 16 KB. O APK fica em `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+O núcleo implementa comandos de arquivos e prepara execução de ELF ARM64 pelo `/system/bin/linker64`. O shim é carregado somente nos processos filhos do terminal. No Galaxy M54 5G (Android 16/API 36/arm64), a build atual abriu e executou um ELF privado via linker no processo normal do app (`gate: child ELF OK`, código 0). O shim e os processos filhos ainda não foram provados. Mirrors e instalação de pacotes continuam pendentes até concluir o gate.

@@ -3,3 +3,8 @@
 /android/local.properties
 /android/app/build/
 *.so
+
+/.tools/
+/android/.kotlin/
+
+/android/build/
