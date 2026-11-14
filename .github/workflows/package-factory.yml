@@ -71,8 +71,8 @@ jobs:
           repository: e15625455-sketch/PocketTerm-pkg
           ref: main
           token: ${{ secrets.PT_PUBLISH_TOKEN }}
-          path: ${{ runner.temp }}/package-store
+          path: package-store
           persist-credentials: true
 
       - name: Publish the signed repository to gh-pages
-        run: factory/publish-site.sh "$RUNNER_TEMP/pocketterm-site" "$RUNNER_TEMP/package-store"
+        run: factory/publish-site.sh "$RUNNER_TEMP/pocketterm-site" "$GITHUB_WORKSPACE/package-store"
