@@ -1,0 +1,78 @@
+name: PocketTerm package factory
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pocketterm-package-factory
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    steps:
+      - name: Checkout PocketTerm
+        uses: actions/checkout@v4
+
+      - name: Install repository tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev xz-utils
+          docker version
+
+      - name: Checkout current Termux package recipes
+        run: git clone --depth 1 https://github.com/termux/termux-packages.git "$RUNNER_TEMP/termux-packages"
+
+      - name: Configure the PocketTerm package prefix
+        run: factory/configure-termux.sh "$RUNNER_TEMP/termux-packages"
+
+      - name: Build Python and its dependency closure for aarch64
+        working-directory: ${{ runner.temp }}/termux-packages
+        run: ./scripts/run-docker.sh ./build-package.sh -F -a aarch64 -o output python
+
+      - name: Generate Packages, Release, source and license manifests
+        env:
+          PT_SIGNING_KEY: ${{ secrets.PT_SIGNING_KEY }}
+        run: |
+          set +x
+          if [[ -z "$PT_SIGNING_KEY" ]]; then
+            echo "GitHub secret PT_SIGNING_KEY is required" >&2
+            exit 1
+          fi
+          key_file="$RUNNER_TEMP/pocketterm-ed25519-key.pem"
+          trap 'python3 -c "from pathlib import Path; Path(\"$key_file\").unlink(missing_ok=True)"' EXIT
+          printf '%s' "$PT_SIGNING_KEY" > "$key_file"
+          chmod 600 "$key_file"
+          unset PT_SIGNING_KEY
+          mkdir -p "$RUNNER_TEMP/pocketterm-site"
+          factory/create-repository.sh \
+            "$RUNNER_TEMP/termux-packages/output" \
+            "$RUNNER_TEMP/pocketterm-site" \
+            "$RUNNER_TEMP/termux-packages" \
+            "$key_file"
+
+      - name: Upload repository artifact for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: pocketterm-aarch64-apt-repository
+          path: ${{ runner.temp }}/pocketterm-site
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Checkout public package repository
+        uses: actions/checkout@v4
+        with:
+          repository: e15625455-sketch/PocketTerm-pkg
+          ref: main
+          token: ${{ secrets.PT_PUBLISH_TOKEN }}
+          path: ${{ runner.temp }}/package-store
+          persist-credentials: true
+
+      - name: Publish the signed repository to gh-pages
+        run: factory/publish-site.sh "$RUNNER_TEMP/pocketterm-site" "$RUNNER_TEMP/package-store"

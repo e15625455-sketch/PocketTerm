@@ -8,3 +8,9 @@
 /android/.kotlin/
 
 /android/build/
+
+# Factory outputs and signing material
+*.pem
+/factory/output/
+/factory/site/
+/factory/signing-key*
