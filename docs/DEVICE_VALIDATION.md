@@ -18,7 +18,7 @@
 - `pkg test`: ambos os endpoints retornaram HTTP 404 para a assinatura Ed25519 exigida e foram classificados como inválidos. `pkg update` terminou com código 1, sem confiar em índice algum.
 - Os endpoints oficiais Termux não são repositório PocketTerm e não permitem concluir instalação de pacotes Python.
 - `./gradlew assembleDebug`: `BUILD SUCCESSFUL` localmente em Termux; o APK foi compilado, não instalado nesta etapa.
-- SHA-256 do APK desta etapa: `c76aefa2c9d2a97dd08326ca9c82f0c66030e250cb95ca418fa07af9f249ebe8`.
+- SHA-256 do APK desta etapa, após incluir permissão `INTERNET`: `9488e4889808071c8a549d7a498e7a2dca284309391a65acefdfe33df3133c8e`.
 
 ## Aparelho Galaxy M54 5G
 
