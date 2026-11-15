@@ -1,0 +1,28 @@
+name: Test PT Signing Secret
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-secret:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate signing secret
+        env:
+          PT_SIGNING_KEY: ${{ secrets.PT_SIGNING_KEY }}
+        run: |
+          set +x
+
+          if [[ -z "$PT_SIGNING_KEY" ]]; then
+            echo "::error::Secret ausente ou vazio"
+            exit 1
+          fi
+
+          key_file="$RUNNER_TEMP/test-key.pem"
+          trap 'rm -f "$key_file"' EXIT
+
+          printf '%s' "$PT_SIGNING_KEY" > "$key_file"
+          unset PT_SIGNING_KEY
+
+          openssl pkey -in "$key_file" -noout
+          echo "Secret recebido e chave reconhecida!"
