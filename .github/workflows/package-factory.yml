@@ -25,15 +25,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y dpkg-dev xz-utils
           docker version
-          echo "Validating Ed25519 private key..."
-
-          if ! openssl pkey -in "$key_file" -noout; then
-          echo "::error::Invalid or unsupported private key"
-          exit 1
-          fi
-
-          echo "Ed25519 private key parsed successfully."
-
       - name: Checkout current Termux package recipes
         run: git clone --depth 1 https://github.com/termux/termux-packages.git "$RUNNER_TEMP/termux-packages"
 
@@ -48,6 +39,14 @@ jobs:
         env:
           PT_SIGNING_KEY: ${{ secrets.PT_SIGNING_KEY }}
         run: |
+          echo "Validating Ed25519 private key..."
+
+          if ! openssl pkey -in "$key_file" -noout; then
+          echo "::error::Invalid or unsupported private key"
+          exit 1
+          fi
+
+          echo "Ed25519 private key parsed successfully."
           set +x
           if [[ -z "$PT_SIGNING_KEY" ]]; then
             echo "GitHub secret PT_SIGNING_KEY is required" >&2
