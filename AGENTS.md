@@ -60,3 +60,6 @@ Nada é declarado como funcionando no aparelho sem teste em aparelho real. O que
 ### Validador isolado da chave de assinatura (15/11/2026)
 - Criado `.github/workflows/validate-signing-key.yml`, disparado manualmente, timeout de 5 minutos. Valida que `PT_SIGNING_KEY` está presente, corresponde à chave pública embutida e consegue assinar/verificar um texto temporário; não faz build ou publicação.
 - O workflow de validação ainda não foi executado no GitHub Actions; precisa ser disparado manualmente após estar no `main`. A chave secreta não foi lida localmente.
+
+### Correção do passo de leitura do secret da factory (15/11/2026)
+- `package-factory.yml` valida presença de `PT_SIGNING_KEY` antes de escrever, grava em `$RUNNER_TEMP/pt-sign.pem` com `umask 077`, confirma `[ -s ... ]`, usa caminho absoluto no OpenSSL e apaga o arquivo via `trap`. O valor não é impresso e a verificação da assinatura/pin em `factory/sign-release.sh` permanece inalterada.

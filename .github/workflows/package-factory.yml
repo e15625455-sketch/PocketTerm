@@ -39,24 +39,32 @@ jobs:
         env:
           PT_SIGNING_KEY: ${{ secrets.PT_SIGNING_KEY }}
         run: |
-          echo "Validating Ed25519 private key..."
-
-          if ! openssl pkey -in "$key_file" -noout; then
-          echo "::error::Invalid or unsupported private key"
-          exit 1
-          fi
-
-          echo "Ed25519 private key parsed successfully."
           set +x
-          if [[ -z "$PT_SIGNING_KEY" ]]; then
-            echo "GitHub secret PT_SIGNING_KEY is required" >&2
+          set -euo pipefail
+          umask 077
+
+          if [ -n "$PT_SIGNING_KEY" ]; then
+            :
+          else
+            echo "secret PT_SIGNING_KEY vazio ou indisponível" >&2
             exit 1
           fi
-          key_file="$RUNNER_TEMP/pocketterm-ed25519-key.pem"
-          trap 'python3 -c "from pathlib import Path; Path(\"$key_file\").unlink(missing_ok=True)"' EXIT
+
+          key_file="$RUNNER_TEMP/pt-sign.pem"
+          trap 'rm -f "$key_file"' EXIT
           printf '%s' "$PT_SIGNING_KEY" > "$key_file"
-          chmod 600 "$key_file"
           unset PT_SIGNING_KEY
+          chmod 600 "$key_file"
+
+          if [ ! -s "$key_file" ]; then
+            echo "secret PT_SIGNING_KEY vazio ou indisponível" >&2
+            exit 1
+          fi
+
+          echo "Validating Ed25519 private key..."
+          openssl pkey -in "$key_file" -noout
+          echo "Ed25519 private key parsed successfully."
+
           mkdir -p "$RUNNER_TEMP/pocketterm-site"
           factory/create-repository.sh \
             "$RUNNER_TEMP/termux-packages/output" \

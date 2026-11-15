@@ -59,3 +59,8 @@ Uma versão anterior executou ELF e script via `adb shell run-as` no mesmo apare
 
 - A PEM pública recebida foi decodificada com OpenSSL; resultou em 32 bytes Ed25519 e no pin `8699d9826c65b6beb94a...a19ebd47`. O pin foi atualizado em Rust e `factory/sign-release.sh`; configs `mirrors.conf` persistidas migram para o novo pin ao abrir o gerenciador.
 - Isso valida apenas o formato/consistência da chave pública. O secret privado `PT_SIGNING_KEY` não foi lido; sua correspondência ao novo pin continua pendente de executar `validate-signing-key.yml` no GitHub Actions.
+
+## Segurança do secret na factory (15/11/2026)
+
+- Corrigido o passo `Validating Ed25519 private key` para verificar secret vazio antes de criar o arquivo, usar `$RUNNER_TEMP/pt-sign.pem` sob `umask 077`, verificar que o PEM não está vazio, usar caminho absoluto no OpenSSL e remover o arquivo via `trap`. O valor não é impresso; a validação de pin/assinatura existente foi mantida.
+- Alteração local ainda não executada no GitHub Actions; a validação depende do próximo workflow run.
