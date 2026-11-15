@@ -1,0 +1,51 @@
+name: Validar chave Ed25519 da loja
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-signing-key:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout PocketTerm
+        uses: actions/checkout@v4
+
+      - name: Validar o secret sem publicar pacotes
+        env:
+          PT_SIGNING_KEY: ${{ secrets.PT_SIGNING_KEY }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          if [[ -z "${PT_SIGNING_KEY:-}" ]]; then
+            echo "GitHub Actions secret PT_SIGNING_KEY is not configured" >&2
+            exit 1
+          fi
+
+          work_dir=$(mktemp -d "${RUNNER_TEMP}/pt-key-check.XXXXXX")
+          trap 'unset PT_SIGNING_KEY; rm -rf "$work_dir"' EXIT
+          key_file="$work_dir/private-key.pem"
+          release_file="$work_dir/Release"
+          signature_file="$work_dir/Release.ed25519"
+          public_file="$work_dir/public-key.pem"
+
+          printf '%s' "$PT_SIGNING_KEY" > "$key_file"
+          unset PT_SIGNING_KEY
+          printf 'Origin: PocketTerm key validation\nSuite: validation\n' > "$release_file"
+
+          factory/sign-release.sh "$key_file" "$release_file" "$signature_file"
+          openssl pkey -in "$key_file" -pubout -out "$public_file" 2>/dev/null
+          openssl pkeyutl -verify -rawin -pubin -inkey "$public_file" \
+            -in "$release_file" -sigfile "$signature_file" >/dev/null 2>&1
+
+          signature_size=$(wc -c < "$signature_file" | tr -d ' ')
+          if [[ "$signature_size" != "64" ]]; then
+            echo "Ed25519 signature has invalid length: $signature_size" >&2
+            exit 1
+          fi
+          echo "PT_SIGNING_KEY matches the embedded public key and signs correctly."

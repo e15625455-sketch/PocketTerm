@@ -48,3 +48,9 @@ Uma versão anterior executou ELF e script via `adb shell run-as` no mesmo apare
 - Não houve execução do workflow Actions, publicação de Pages, download de pacote ou assinatura da Release com a chave privada (indisponível por projeto).
 - Aparelho: nenhum ADB utilizado nesta etapa. `pkg update`, `pkg install python`, `python3 --version` e `python3 -m http.server` continuam não testados no aparelho.
 - Dependências externas para primeira publicação: configurar `PT_SIGNING_KEY` e `PT_PUBLISH_TOKEN` como secrets Actions do repositório PocketTerm; habilitar Pages no repositório `PocketTerm-pkg` usando branch `gh-pages` e raiz. Depois executar `PocketTerm package factory` manualmente e revisar o artefato antes de validar no app.
+
+## Validador da chave Ed25519 (15/11/2026)
+
+- Criado `.github/workflows/validate-signing-key.yml`: `workflow_dispatch`, runner Ubuntu 24.04, timeout de 5 minutos, sem build de pacotes nem publicação.
+- O job usa `PT_SIGNING_KEY` somente dentro do runner, verifica a chave pública pinada pelo script `factory/sign-release.sh`, produz e verifica uma assinatura de teste e remove os arquivos temporários. O log não imprime a chave.
+- Não executado: o workflow ainda não foi disparado no GitHub Actions. A chave secreta real não foi lida localmente.
