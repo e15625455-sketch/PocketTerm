@@ -9,7 +9,7 @@ fi
 key_file=$1
 release_file=$2
 signature_file=$3
-expected_public_key=cc086f7a8574b4bc230a41b2c148fe1a239d3c07ea9a6842f679862fe50a3068
+expected_public_key=8699d9826c65b6beb94b97ab996ec02e6a63e8eabecbb571e176e550a19ebd47
 
 # Verify that the GitHub secret matches the public key embedded in PocketTerm.
 # Only the public DER is read from openssl output; private material stays in the key file.

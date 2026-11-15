@@ -16,8 +16,8 @@ const MIRROR_CONFIG: &str = "usr/etc/pocketterm/mirrors.conf";
 const SELECTED_CONFIG: &str = "usr/etc/pocketterm/selected-mirror";
 pub const POCKETTERM_REPOSITORY: &str = "https://e15625455-sketch.github.io/PocketTerm-pkg";
 pub const POCKETTERM_PUBLIC_KEY: [u8; 32] = [
-    0xcc, 0x08, 0x6f, 0x7a, 0x85, 0x74, 0xb4, 0xbc, 0x23, 0x0a, 0x41, 0xb2, 0xc1, 0x48, 0xfe, 0x1a,
-    0x23, 0x9d, 0x3c, 0x07, 0xea, 0x9a, 0x68, 0x42, 0xf6, 0x79, 0x86, 0x2f, 0xe5, 0x0a, 0x30, 0x68,
+    0x86, 0x99, 0xd9, 0x82, 0x6c, 0x65, 0xb6, 0xbe, 0xb9, 0x4b, 0x97, 0xab, 0x99, 0x6e, 0xc0, 0x2e,
+    0x6a, 0x63, 0xe8, 0xea, 0xbe, 0xcb, 0xb5, 0x71, 0xe1, 0x76, 0xe5, 0x50, 0xa1, 0x9e, 0xbd, 0x47,
 ];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -86,15 +86,20 @@ impl MirrorManager {
                 public_key,
             });
         }
-        if !mirrors.iter().any(|mirror| mirror.name == "pocketterm") {
-            mirrors.insert(
-                0,
-                Mirror {
-                    name: "pocketterm".into(),
-                    base_url: POCKETTERM_REPOSITORY.into(),
-                    public_key: Some(POCKETTERM_PUBLIC_KEY),
-                },
-            );
+        let pinned_mirror = Mirror {
+            name: "pocketterm".into(),
+            base_url: POCKETTERM_REPOSITORY.into(),
+            public_key: Some(POCKETTERM_PUBLIC_KEY),
+        };
+        let needs_pin_update = mirrors.first() != Some(&pinned_mirror)
+            || mirrors
+                .iter()
+                .filter(|mirror| mirror.name == "pocketterm")
+                .count()
+                != 1;
+        if needs_pin_update {
+            mirrors.retain(|mirror| mirror.name != "pocketterm");
+            mirrors.insert(0, pinned_mirror);
             let mut content = String::from(
                 "# Signed PocketTerm repository; Termux endpoints are diagnostic-only.\n",
             );
@@ -626,6 +631,15 @@ mod tests {
             Some(super::POCKETTERM_PUBLIC_KEY)
         );
         assert!(super::validate_https_url("http://example.org").is_err());
+        let config = root.join(super::MIRROR_CONFIG);
+        fs::write(&config, "pocketterm\thttps://e15625455-sketch.github.io/PocketTerm-pkg\tcc086f7a8574b4bc230a41b2c148fe1a239d3c07ea9a6842f679862fe50a3068\ntermux-primary\thttps://packages.termux.dev/apt/termux-main\t-\ntermux-cf\thttps://packages-cf.termux.dev/apt/termux-main\t-\n").expect("write old pin");
+        let migrated = MirrorManager::open(&root).expect("migrate saved pin");
+        assert_eq!(
+            migrated.mirrors[0].public_key,
+            Some(super::POCKETTERM_PUBLIC_KEY)
+        );
+        let saved = fs::read_to_string(config).expect("read migrated config");
+        assert!(saved.contains("8699d9826c65b6beb94b97ab996ec02e6a63e8eabecbb571e176e550a19ebd47"));
         let _ = fs::remove_dir_all(root);
     }
 }

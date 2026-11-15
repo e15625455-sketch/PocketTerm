@@ -54,3 +54,8 @@ Uma versão anterior executou ELF e script via `adb shell run-as` no mesmo apare
 - Criado `.github/workflows/validate-signing-key.yml`: `workflow_dispatch`, runner Ubuntu 24.04, timeout de 5 minutos, sem build de pacotes nem publicação.
 - O job usa `PT_SIGNING_KEY` somente dentro do runner, verifica a chave pública pinada pelo script `factory/sign-release.sh`, produz e verifica uma assinatura de teste e remove os arquivos temporários. O log não imprime a chave.
 - Não executado: o workflow ainda não foi disparado no GitHub Actions. A chave secreta real não foi lida localmente.
+
+## Atualização da chave pública da loja (15/11/2026)
+
+- A PEM pública recebida foi decodificada com OpenSSL; resultou em 32 bytes Ed25519 e no pin `8699d9826c65b6beb94a...a19ebd47`. O pin foi atualizado em Rust e `factory/sign-release.sh`; configs `mirrors.conf` persistidas migram para o novo pin ao abrir o gerenciador.
+- Isso valida apenas o formato/consistência da chave pública. O secret privado `PT_SIGNING_KEY` não foi lido; sua correspondência ao novo pin continua pendente de executar `validate-signing-key.yml` no GitHub Actions.
